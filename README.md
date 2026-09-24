@@ -9,7 +9,7 @@ Stack: Next.js (App Router, TypeScript, Tailwind) · Supabase (magic-link auth +
 - [x] **M1 Skeleton**: magic-link login, protected empty dashboard, deploy-ready
 - [x] **M2 Experience library**: add/edit/delete roles and facts ("atoms") by hand; confirmed-only model
 - [x] **M3 AI structuring**: one ramble per role (type, paste or dictate) → Claude proposes atoms → code checks them against the note → you confirm
-- [ ] M4 Generate (job posting → draft; every bullet cites atoms; invention check in code)
+- [x] **M4 Generate**: job posting → targeted draft; every line cites confirmed facts; grounding check in code
 - [ ] M5 Edit + PDF export
 - [ ] M6 Quota (15 generations / calendar month, soft block + waitlist)
 - [ ] M7 Dogfood
@@ -62,6 +62,21 @@ Run `supabase/migrations/0002_ai_structuring.sql` the same way (after 0001). It 
 5. Only what you tick becomes `confirmed`. Only confirmed atoms can feed resume generation.
 
 Fair-use limit: 25 structuring runs per user per 24 hours (separate from the 15 generations/month).
+
+### Milestone 4 migration
+
+Run `supabase/migrations/0003_generation.sql` (after 0002). It adds `job_targets`, `drafts`, `draft_atoms` and `generation_events`.
+
+## How generation stays honest
+
+- Job titles, employers, locations and dates come straight from your library, in code. The model never writes them.
+- The skills line is the exact text of skill/tool facts the model picked.
+- The model sees facts as short IDs (F1, F2…) and must cite 1–3 from the same job for every line.
+- `src/lib/ai/ground.ts` then checks each line against the facts it cites:
+  - **removed**: cites nothing, cites a fact that doesn't exist, or cites another job's fact
+  - **flagged**: a new number, an estimate stated as exact, a named tool/term not in the cited facts, a job-posting keyword none of your facts mention, or "led / managed / owned" your facts don't say
+- The draft page shows each line's source facts, flagged lines with reasons, removed lines, and unused facts.
+- Model: Claude Sonnet (`src/lib/ai/config.ts`), shared with structuring. Opus is refused.
 
 ## Deploy to Vercel
 

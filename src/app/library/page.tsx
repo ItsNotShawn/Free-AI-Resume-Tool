@@ -2,18 +2,11 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { AppHeader } from "@/components/AppHeader";
 import { formatRange } from "@/lib/months";
+import { sortRoles } from "@/lib/roles";
 import { createClient } from "@/lib/supabase/server";
 import { ATOM_KINDS, type AtomKind, type Role } from "@/lib/types";
 
 type RoleWithAtoms = Role & { atoms: { kind: AtomKind; status: string }[] };
-
-/** Current roles first, then most recent end, then most recent start. */
-function sortRoles(a: Role, b: Role) {
-  if (a.is_current !== b.is_current) return a.is_current ? -1 : 1;
-  const ae = a.end_month ?? "", be = b.end_month ?? "";
-  if (ae !== be) return be.localeCompare(ae);
-  return (b.start_month ?? "").localeCompare(a.start_month ?? "");
-}
 
 export default async function LibraryPage() {
   const supabase = await createClient();

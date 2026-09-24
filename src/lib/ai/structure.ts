@@ -1,4 +1,4 @@
-import { claudeModel } from "./config";
+import { AIError, callTool } from "./anthropic";
 import type { RawProposal } from "./verify";
 
 /**
@@ -6,8 +6,6 @@ import type { RawProposal } from "./verify";
  * Output is forced through a tool schema so we always get JSON back.
  * Everything returned is still checked by verifyProposals() before storage.
  */
-
-const API_URL = "https://api.anthropic.com/v1/messages";
 
 const SYSTEM = `You turn a person's own description of ONE job into small, separate resume facts ("atoms").
 
@@ -55,7 +53,7 @@ const TOOL = {
     },
     required: ["atoms"],
   },
-} as const;
+};
 
 export type RoleContext = {
   title: string;
@@ -65,19 +63,15 @@ export type RoleContext = {
   existing: string[];
 };
 
-export class StructuringError extends Error {}
+/** Kept as an alias so callers can catch structuring failures by name. */
+export { AIError as StructuringError };
 
 export async function proposeAtoms(note: string, role: RoleContext): Promise<RawProposal[]> {
-  const apiKey = process.env.ANTHROPIC_API_KEY?.trim();
-  if (!apiKey) {
-    throw new StructuringError("AI structuring isn't set up: ANTHROPIC_API_KEY is missing from .env.local.");
-  }
-
   const existing = role.existing.length
     ? role.existing.map((e) => `- ${e}`).join("\n")
     : "(nothing yet)";
 
-  const userMessage = `Role: ${role.title} at ${role.company} (${role.dates}${role.isCurrent ? ", current role" : ""})
+  const user = `Role: ${role.title} at ${role.company} (${role.dates}${role.isCurrent ? ", current role" : ""})
 
 Already saved for this role:
 ${existing}
@@ -88,58 +82,10 @@ ${note}
 
 Extract the atoms using the propose_atoms tool.`;
 
-  let res: Response;
-  try {
-    res = await fetch(API_URL, {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
-      },
-      body: JSON.stringify({
-        model: claudeModel(),
-        max_tokens: 4096,
-        system: SYSTEM,
-        tools: [TOOL],
-        tool_choice: { type: "tool", name: TOOL.name },
-        messages: [{ role: "user", content: userMessage }],
-      }),
-      signal: AbortSignal.timeout(55_000),
-      cache: "no-store",
-    });
-  } catch (e) {
-    const timedOut = e instanceof Error && e.name === "TimeoutError";
-    throw new StructuringError(
-      timedOut ? "The AI took too long to respond. Try again, or split a very long note in two." : "Couldn't reach the AI service. Check your connection and try again.",
-    );
-  }
-
-  if (!res.ok) {
-    const body = await res.text().catch(() => "");
-    console.error("[structure] Anthropic API error", res.status, body.slice(0, 500));
-    if (res.status === 401) throw new StructuringError("The Anthropic API key was rejected. Check ANTHROPIC_API_KEY.");
-    if (res.status === 404) throw new StructuringError("The configured AI model wasn't found. Check ANTHROPIC_MODEL.");
-    if (res.status === 429 || res.status === 529) throw new StructuringError("The AI service is busy. Wait a minute and try again.");
-    let detail = "";
-    try {
-      detail = (JSON.parse(body) as { error?: { message?: string } }).error?.message ?? "";
-    } catch {
-      /* not JSON */
-    }
-    throw new StructuringError(
-      `The AI service returned an error (${res.status})${detail ? `: ${detail.slice(0, 200)}` : ""}. Try again.`,
-    );
-  }
-
-  const data = (await res.json()) as {
-    content?: { type: string; name?: string; input?: { atoms?: unknown } }[];
-  };
-  const call = data.content?.find((c) => c.type === "tool_use" && c.name === TOOL.name);
-  const atoms = call?.input?.atoms;
+  const { input } = await callTool({ system: SYSTEM, user, tool: TOOL, logTag: "structure" });
+  const atoms = input.atoms;
   if (!Array.isArray(atoms)) {
-    console.error("[structure] unexpected response shape", JSON.stringify(data).slice(0, 500));
-    throw new StructuringError("The AI returned something unexpected. Try again.");
+    throw new AIError("The AI returned something unexpected. Try again.");
   }
 
   return atoms

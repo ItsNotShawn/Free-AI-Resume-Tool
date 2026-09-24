@@ -55,14 +55,14 @@ export function normalize(s: string): string {
 }
 
 /** Word tokens (letters/digits, keeps things like c++, c#, node.js, 3.5). */
-function tokens(s: string): string[] {
+export function tokens(s: string): string[] {
   return normalize(s)
     .split(/[^a-z0-9+#.%$]+/)
     .map((t) => t.replace(/^[.]+|[.]+$/g, ""))
     .filter((t) => t.length > 0);
 }
 
-const STOPWORDS = new Set([
+export const STOPWORDS = new Set([
   "a", "an", "the", "and", "or", "of", "to", "in", "on", "for", "with", "at", "by",
   "from", "as", "is", "was", "were", "be", "been", "it", "that", "this", "i", "we", "my", "our",
 ]);
@@ -93,7 +93,8 @@ const NUMBER_WORDS: Record<string, string> = {
   half: "50", dozen: "12",
 };
 
-function noteNumbers(note: string): Set<string> {
+/** Numbers in text, including spoken ones ("three" → 3, "half" → 50). */
+export function noteNumbers(note: string): Set<string> {
   const set = new Set(numbersIn(note));
   for (const t of tokens(note)) {
     if (NUMBER_WORDS[t]) set.add(NUMBER_WORDS[t]);
@@ -109,7 +110,7 @@ function termInNote(term: string, noteNorm: string, noteTokens: Set<string>): bo
   return words.length > 0 && words.every((w) => noteTokens.has(w));
 }
 
-const HEDGE = /\b(about|around|roughly|approximately|approx|nearly|almost|close to|over|under|more than|less than|up to|at least)\b|~/;
+export const HEDGE = /\b(about|around|roughly|approximately|approx|nearly|almost|close to|over|under|more than|less than|up to|at least)\b|~/;
 
 export function verifyProposals(note: string, proposals: RawProposal[]): VerifyResult {
   const noteNorm = normalize(note);

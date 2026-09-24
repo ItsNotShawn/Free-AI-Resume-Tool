@@ -11,6 +11,12 @@ export function AppHeader({ email }: { email: string | undefined }) {
           <Link href="/library" className="text-sm hover:underline">
             Experience library
           </Link>
+          <Link href="/generate" className="text-sm hover:underline">
+            New resume
+          </Link>
+          <Link href="/drafts" className="text-sm hover:underline">
+            Drafts
+          </Link>
         </nav>
         <div className="flex items-center gap-4 text-sm">
           <span className="hidden text-stone-500 sm:inline">{email}</span>

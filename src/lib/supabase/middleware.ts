@@ -2,7 +2,7 @@ import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { supabaseAnonKey, supabaseUrl } from "@/lib/env";
 import { NextResponse, type NextRequest } from "next/server";
 
-const PROTECTED_PREFIXES = ["/dashboard", "/library"];
+const PROTECTED_PREFIXES = ["/dashboard", "/library", "/generate", "/drafts"];
 
 /** Refreshes the auth session on every request and guards protected routes. */
 export async function updateSession(request: NextRequest) {
