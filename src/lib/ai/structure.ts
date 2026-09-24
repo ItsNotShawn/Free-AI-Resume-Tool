@@ -1,3 +1,4 @@
+import { claudeModel } from "./config";
 import type { RawProposal } from "./verify";
 
 /**
@@ -7,7 +8,6 @@ import type { RawProposal } from "./verify";
  */
 
 const API_URL = "https://api.anthropic.com/v1/messages";
-const DEFAULT_MODEL = "claude-sonnet-5";
 
 const SYSTEM = `You turn a person's own description of ONE job into small, separate resume facts ("atoms").
 
@@ -98,7 +98,7 @@ Extract the atoms using the propose_atoms tool.`;
         "anthropic-version": "2023-06-01",
       },
       body: JSON.stringify({
-        model: process.env.ANTHROPIC_MODEL?.trim() || DEFAULT_MODEL,
+        model: claudeModel(),
         max_tokens: 4096,
         system: SYSTEM,
         tools: [TOOL],
