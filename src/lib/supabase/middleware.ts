@@ -2,7 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { supabaseAnonKey, supabaseUrl } from "@/lib/env";
 import { NextResponse, type NextRequest } from "next/server";
 
-const PROTECTED_PREFIXES = ["/dashboard"];
+const PROTECTED_PREFIXES = ["/dashboard", "/library"];
 
 /** Refreshes the auth session on every request and guards protected routes. */
 export async function updateSession(request: NextRequest) {

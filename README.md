@@ -7,7 +7,7 @@ Stack: Next.js (App Router, TypeScript, Tailwind) · Supabase (magic-link auth +
 ## Status
 
 - [x] **M1 Skeleton**: magic-link login, protected empty dashboard, deploy-ready
-- [ ] M2 Experience library
+- [x] **M2 Experience library**: add/edit/delete roles and facts ("atoms") by hand; confirmed-only model
 - [ ] M3 AI structuring (paste → proposed atoms → confirm)
 - [ ] M4 Generate (job posting → draft; every bullet cites atoms; invention check in code)
 - [ ] M5 Edit + PDF export
@@ -36,6 +36,15 @@ npm run dev                  # http://localhost:3000
 `NEXT_PUBLIC_SUPABASE_URL` must be the bare project URL, `https://xxxx.supabase.co`, with no `/rest/v1` and no trailing slash. A path there causes `Invalid path specified in request URL`.
 
 Supabase's built-in email sender is rate-limited (a few emails per hour). That's fine for testing; set up custom SMTP before inviting friends.
+
+## Database setup (once per Supabase project)
+
+Supabase → **SQL Editor** → New query → paste the contents of
+`supabase/migrations/0001_experience_library.sql` → **Run**. It's safe to run again.
+
+This creates `roles`, `atoms` and `source_notes` with row-level security (each user sees only their own rows).
+Atoms have a `status` of `proposed` or `confirmed`; only confirmed atoms (the `confirmed_atoms` view) will ever feed resume generation.
+Anything typed by hand is confirmed on save, and the database rejects a hand-typed atom that isn't.
 
 ## Deploy to Vercel
 
