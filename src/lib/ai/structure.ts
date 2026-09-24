@@ -100,7 +100,6 @@ Extract the atoms using the propose_atoms tool.`;
       body: JSON.stringify({
         model: process.env.ANTHROPIC_MODEL?.trim() || DEFAULT_MODEL,
         max_tokens: 4096,
-        temperature: 0,
         system: SYSTEM,
         tools: [TOOL],
         tool_choice: { type: "tool", name: TOOL.name },
@@ -122,7 +121,15 @@ Extract the atoms using the propose_atoms tool.`;
     if (res.status === 401) throw new StructuringError("The Anthropic API key was rejected. Check ANTHROPIC_API_KEY.");
     if (res.status === 404) throw new StructuringError("The configured AI model wasn't found. Check ANTHROPIC_MODEL.");
     if (res.status === 429 || res.status === 529) throw new StructuringError("The AI service is busy. Wait a minute and try again.");
-    throw new StructuringError(`The AI service returned an error (${res.status}). Try again.`);
+    let detail = "";
+    try {
+      detail = (JSON.parse(body) as { error?: { message?: string } }).error?.message ?? "";
+    } catch {
+      /* not JSON */
+    }
+    throw new StructuringError(
+      `The AI service returned an error (${res.status})${detail ? `: ${detail.slice(0, 200)}` : ""}. Try again.`,
+    );
   }
 
   const data = (await res.json()) as {
