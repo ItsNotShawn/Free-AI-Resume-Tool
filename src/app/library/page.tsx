@@ -65,6 +65,7 @@ export default async function LibraryPage() {
         <ul className="mt-8 space-y-3">
           {roles.map((role) => {
             const confirmed = role.atoms.filter((a) => a.status === "confirmed");
+            const pending = role.atoms.length - confirmed.length;
             return (
               <li key={role.id}>
                 <Link
@@ -79,6 +80,11 @@ export default async function LibraryPage() {
                       {formatRange(role.start_month, role.end_month, role.is_current)}
                     </span>
                   </div>
+                  {pending > 0 && (
+                    <p className="mt-2 text-sm text-amber-700 dark:text-amber-400">
+                      {pending} AI {pending === 1 ? "suggestion" : "suggestions"} to review
+                    </p>
+                  )}
                   <p className="mt-2 text-sm text-stone-500">
                     {confirmed.length === 0
                       ? "No details yet"

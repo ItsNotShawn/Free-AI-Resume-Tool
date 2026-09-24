@@ -24,6 +24,8 @@ export type Atom = {
   status: AtomStatus;
   origin: AtomOrigin;
   source_note_id: string | null;
+  evidence: string | null; // verbatim quote from the source note (AI proposals)
+  review_note: string | null; // why the user should double-check this proposal
   confirmed_at: string | null;
   created_at: string;
   updated_at: string;
@@ -59,3 +61,11 @@ export const ATOM_KINDS: { kind: AtomKind; label: string; hint: string; placehol
 export const KIND_LABEL: Record<AtomKind, string> = Object.fromEntries(
   ATOM_KINDS.map((k) => [k.kind, k.label]),
 ) as Record<AtomKind, string>;
+
+export type SourceNote = {
+  id: string;
+  user_id: string;
+  role_id: string | null;
+  body: string;
+  created_at: string;
+};
