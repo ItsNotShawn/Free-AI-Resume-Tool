@@ -1,0 +1,48 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [static-byok, main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install
+        run: npm install --no-audit --no-fund
+      - name: Type-check and build
+        run: npm run build
+      - name: Check the built site only talks to Anthropic
+        run: |
+          # Any absolute URL a built script could fetch, other than Anthropic's API.
+          if grep -rhoE "fetch\([\"'\`]https?://[^\"'\`]+" dist | grep -v "https://api.anthropic.com" ; then
+            echo "Found a network call to a host other than api.anthropic.com"; exit 1
+          fi
+          grep -q "connect-src https://api.anthropic.com" dist/index.html || { echo "CSP missing from index.html"; exit 1; }
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

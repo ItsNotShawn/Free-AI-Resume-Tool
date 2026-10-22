@@ -9,7 +9,3 @@ export function sortRoles<T extends Pick<Role, "is_current" | "end_month" | "sta
   return (b.start_month ?? "").localeCompare(a.start_month ?? "");
 }
 
-/** First instant of the current calendar month (UTC) for the monthly generation count. */
-export function monthStartIso(now = new Date()): string {
-  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).toISOString();
-}
