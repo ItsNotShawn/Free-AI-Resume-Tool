@@ -110,7 +110,7 @@ const month = (v: unknown): string | null => {
 const id = (v: unknown, prefix: string): string => (typeof v === "string" && v ? v.slice(0, 64) : newId(prefix));
 
 const KINDS: AtomKind[] = ["bullet", "outcome", "skill", "tool"];
-const PROMPTS: RolePrompt[] = ["did", "wins", "tools"];
+const PROMPTS: RolePrompt[] = ["basics", "did", "wins", "tools"];
 const MODES: WorkMode[] = ["onsite", "hybrid", "remote"];
 
 /** Older file versions are upgraded one step at a time. Key = version being upgraded FROM. */

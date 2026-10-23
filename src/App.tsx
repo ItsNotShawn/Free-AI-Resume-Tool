@@ -1,5 +1,7 @@
 import { useRoute, Link } from "./router";
 import { MemoryProvider, useStore } from "./lib/memory/store";
+import { AISettingsProvider } from "./lib/ai/settings";
+import { Settings } from "./pages/Settings";
 import { Home } from "./pages/Home";
 import { Overview } from "./pages/Overview";
 import { Privacy } from "./pages/Privacy";
@@ -8,9 +10,11 @@ import { AppShell } from "./components/AppShell";
 
 export function App() {
   return (
-    <MemoryProvider>
-      <Routes />
-    </MemoryProvider>
+    <AISettingsProvider>
+      <MemoryProvider>
+        <Routes />
+      </MemoryProvider>
+    </AISettingsProvider>
   );
 }
 
@@ -20,6 +24,7 @@ function Routes() {
 
   if (route === "/") return <Home />;
   if (route === "/privacy") return <Privacy />;
+  if (route === "/settings") return <Settings />;
 
   const needsFile = route === "/memory" || route === "/setup" || route.startsWith("/setup/");
   if (needsFile && !memory) return <NoFile />;

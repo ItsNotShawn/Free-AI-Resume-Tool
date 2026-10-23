@@ -56,6 +56,11 @@ export const addEntry = (section: ListSection) => (m: MemoryFile): MemoryFile =>
   sections: { ...m.sections, [section]: [...m.sections[section], emptyEntry()] },
 });
 
+export const addEntries = (section: ListSection, entries: Entry[]) => (m: MemoryFile): MemoryFile => ({
+  ...m,
+  sections: { ...m.sections, [section]: [...m.sections[section], ...entries] },
+});
+
 export const updateEntry = (section: ListSection, id: string, patch: Partial<Entry>) => (m: MemoryFile): MemoryFile => ({
   ...m,
   sections: { ...m.sections, [section]: m.sections[section].map((e) => (e.id === id ? { ...e, ...patch } : e)) },

@@ -30,7 +30,9 @@ export type Role = {
 };
 
 /** The questions asked about each job, one chunk at a time. */
-export type RolePrompt = "did" | "wins" | "tools";
+export type QuestionPrompt = "did" | "wins" | "tools";
+/** "basics" holds what the user said when speaking their company, title and dates. */
+export type RolePrompt = "basics" | QuestionPrompt;
 
 /**
  * A raw answer, kept word for word. AI-proposed atoms must quote one of these,

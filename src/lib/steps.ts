@@ -1,12 +1,12 @@
 import type { MemoryFile } from "@/lib/memory/schema";
-import type { RolePrompt } from "@/lib/types";
+import type { QuestionPrompt } from "@/lib/types";
 
 /**
  * The guided setup, one short question per screen. The list is rebuilt from
  * the file, so adding a job or turning on an optional section adds steps.
  */
 
-export const ROLE_QUESTIONS: Record<RolePrompt, { question: string; help: string; placeholder: string }> = {
+export const ROLE_QUESTIONS: Record<QuestionPrompt, { question: string; help: string; placeholder: string }> = {
   did: {
     question: "What did you do day to day?",
     help: "Your main responsibilities and projects, in your own words. Don't worry about polish; just talk it through.",

@@ -1,11 +1,14 @@
 import { useState } from "react";
 import { StepShell } from "@/components/StepShell";
 import { LongAnswer } from "@/components/LongAnswer";
+import { SpeakToFill } from "@/components/SpeakToFill";
+import { fillContact, fillEntries, fillJobBasics, type Filled } from "@/lib/ai/fill";
 import { ConfirmButton, Notice, TextField } from "@/components/ui";
 import { Link } from "@/router";
 import { useMemoryFile } from "@/lib/memory/store";
-import { EXTRA_SECTIONS, emptyRole } from "@/lib/memory/schema";
+import { EXTRA_SECTIONS, emptyEntry, emptyRole } from "@/lib/memory/schema";
 import {
+  addEntries,
   addEntry,
   addManualSkills,
   getNote,
@@ -21,7 +24,25 @@ import {
 } from "@/lib/memory/edit";
 import { SECTIONS } from "@/lib/sections";
 import { ROLE_QUESTIONS, buildSteps, stepHref } from "@/lib/steps";
-import type { ExtraSection, ListSection, Role, RolePrompt, WorkMode } from "@/lib/types";
+import type { Entry, ExtraSection, ListSection, QuestionPrompt, Role, WorkMode } from "@/lib/types";
+
+/** Per-field "check this" notes from the AI fill, cleared when the user edits that field. */
+function useFlags() {
+  const [flags, setFlags] = useState<Record<string, string | null>>({});
+  const clear = (k: string) => setFlags((f) => (f[k] ? { ...f, [k]: null } : f));
+  return { flags, setFlags, clear };
+}
+
+function countFilled(values: (Filled<unknown> | null | undefined)[]): { filled: number; flagged: number } {
+  const real = values.filter((v): v is Filled<unknown> => !!v);
+  return { filled: real.length, flagged: real.filter((v) => v.flag).length };
+}
+
+function fillSummary(filled: number, flagged: number, noun = "field"): string {
+  if (filled === 0) return "Nothing to fill in from that. Try saying it a different way, or type it in below.";
+  const base = `Filled in ${filled} ${noun}${filled === 1 ? "" : "s"}.`;
+  return flagged ? `${base} Check the ${flagged} marked with ⚠ below.` : `${base} Give them a quick check below.`;
+}
 
 /** Routes /setup/<step> to the right screen. */
 export function Setup({ step }: { step: string }) {
@@ -34,15 +55,19 @@ export function Setup({ step }: { step: string }) {
   if (job) {
     const role = memory.roles.find((r) => r.id === job[1]);
     if (!role) return <MissingStep />;
-    return job[2] === "basics" ? <JobBasicsStep role={role} /> : <JobQuestionStep role={role} prompt={job[2] as RolePrompt} />;
+    return job[2] === "basics" ? (
+      <JobBasicsStep key={role.id} role={role} />
+    ) : (
+      <JobQuestionStep key={`${role.id}-${job[2]}`} role={role} prompt={job[2] as QuestionPrompt} />
+    );
   }
 
-  if (step === "education" || step === "certifications") return <ListStep section={step} />;
-  if ((EXTRA_SECTIONS as string[]).includes(step)) return <ListStep section={step as ExtraSection} />;
+  if (step === "education" || step === "certifications") return <ListStep key={step} section={step} />;
+  if ((EXTRA_SECTIONS as string[]).includes(step)) return <ListStep key={step} section={step as ExtraSection} />;
   if (step === "skills") return <SkillsStep />;
   if (step === "hobbies") return <HobbiesStep />;
   if (step === "extras") return <ExtrasStep />;
-  if (step === "about/process" || step === "about/motivation") return <AboutStep which={step} />;
+  if (step === "about/process" || step === "about/motivation") return <AboutStep key={step} which={step} />;
   if (step === "done") return <DoneStep />;
   return <MissingStep />;
 }
@@ -62,8 +87,34 @@ function MissingStep() {
 function ContactStep() {
   const { memory, update } = useMemoryFile();
   const p = memory.profile;
-  const set = (patch: Partial<typeof p>) => update(setProfile(patch));
+  const { flags, setFlags, clear } = useFlags();
+  const [said, setSaid] = useState("");
+  const set = (patch: Partial<typeof p>, field: string) => {
+    clear(field);
+    update(setProfile(patch));
+  };
   const links = [p.links[0] ?? "", p.links[1] ?? ""];
+
+  async function onFill(transcript: string, creds: { apiKey: string; model: string }) {
+    const r = await fillContact(transcript, creds);
+    const patch: Partial<typeof p> = {};
+    const nextFlags: Record<string, string | null> = {};
+    for (const k of ["name", "email", "phone", "location"] as const) {
+      const f = r[k];
+      if (f) {
+        patch[k] = f.value;
+        nextFlags[k] = f.flag;
+      }
+    }
+    if (r.links.length) {
+      patch.links = [r.links[0]?.value ?? links[0], r.links[1]?.value ?? links[1]];
+      r.links.forEach((l, i) => (nextFlags[`link${i}`] = l.flag));
+    }
+    update(setProfile(patch));
+    setFlags(nextFlags);
+    const { filled, flagged } = countFilled([r.name, r.email, r.phone, r.location, ...r.links]);
+    return fillSummary(filled, flagged);
+  }
 
   return (
     <StepShell
@@ -71,13 +122,22 @@ function ContactStep() {
       question="Let's start with how employers reach you"
       help="This only appears at the top of your resume. It stays in your file."
     >
-      <TextField label="Full name" value={p.name} onChange={(v) => set({ name: v })} autoComplete="name" placeholder="Jordan Smith" />
-      <TextField label="Email" type="email" value={p.email} onChange={(v) => set({ email: v })} autoComplete="email" placeholder="jordan@example.com" />
-      <TextField label="Phone" type="tel" value={p.phone} onChange={(v) => set({ phone: v })} autoComplete="tel" placeholder="(555) 555-0142" />
+      <SpeakToFill
+        title="Say it instead"
+        prompt="Say your name, email, phone number, city, and any LinkedIn or website. The fields below fill themselves in."
+        placeholder={'For example: "Jordan Smith, jordan at gmail dot com, five five five, five five five, oh one four two, I live in Springfield Mass."'}
+        value={said}
+        onChange={setSaid}
+        onFill={onFill}
+      />
+      <TextField label="Full name" value={p.name} flag={flags.name} onChange={(v) => set({ name: v }, "name")} autoComplete="name" placeholder="Jordan Smith" />
+      <TextField label="Email" type="email" value={p.email} flag={flags.email} onChange={(v) => set({ email: v }, "email")} autoComplete="email" placeholder="jordan@example.com" />
+      <TextField label="Phone" type="tel" value={p.phone} flag={flags.phone} onChange={(v) => set({ phone: v }, "phone")} autoComplete="tel" placeholder="(555) 555-0142" />
       <TextField
         label="City and state"
         value={p.location}
-        onChange={(v) => set({ location: v })}
+        flag={flags.location}
+        onChange={(v) => set({ location: v }, "location")}
         autoComplete="address-level2"
         placeholder="Springfield, MA"
         hint="City and state is plenty. Leave out your street address."
@@ -88,11 +148,12 @@ function ContactStep() {
           label={i === 0 ? "LinkedIn or website (optional)" : "Another link (optional)"}
           type="url"
           value={l}
+          flag={flags[`link${i}`]}
           placeholder={i === 0 ? "linkedin.com/in/jordansmith" : "jordansmith.com"}
           onChange={(v) => {
             const next = [...links];
             next[i] = v;
-            set({ links: next });
+            set({ links: next }, `link${i}`);
           }}
         />
       ))}
@@ -178,7 +239,40 @@ const MODES: { value: WorkMode | null; label: string }[] = [
 function JobBasicsStep({ role }: { role: Role }) {
   const { memory, update } = useMemoryFile();
   const i = memory.roles.findIndex((r) => r.id === role.id);
-  const set = (patch: Partial<Role>) => update(updateRole(role.id, patch));
+  const { flags, setFlags, clear } = useFlags();
+  const set = (patch: Partial<Role>, field: string) => {
+    clear(field);
+    update(updateRole(role.id, patch));
+  };
+  // What they said is kept word for word: it's also a source for the AI facts step.
+  const said = getNote(memory, role.id, "basics");
+
+  async function onFill(transcript: string, creds: { apiKey: string; model: string }) {
+    const r = await fillJobBasics(transcript, creds);
+    const patch: Partial<Role> = {};
+    const nextFlags: Record<string, string | null> = {};
+    for (const k of ["company", "title", "location", "start_month", "end_month"] as const) {
+      const f = r[k];
+      if (f) {
+        patch[k] = f.value;
+        nextFlags[k] = f.flag;
+      }
+    }
+    if (r.work_mode) {
+      patch.work_mode = r.work_mode.value;
+      nextFlags.work_mode = r.work_mode.flag;
+    }
+    if (r.is_current === true) {
+      patch.is_current = true;
+      patch.end_month = null;
+    } else if (r.is_current === false && r.end_month) {
+      patch.is_current = false;
+    }
+    update(updateRole(role.id, patch));
+    setFlags(nextFlags);
+    const { filled, flagged } = countFilled([r.company, r.title, r.location, r.work_mode, r.start_month, r.end_month]);
+    return fillSummary(filled + (r.is_current ? 1 : 0), flagged);
+  }
 
   return (
     <StepShell
@@ -186,14 +280,23 @@ function JobBasicsStep({ role }: { role: Role }) {
       question={i === 0 ? "Your most recent job: the basics" : `Job ${i + 1}: the basics`}
       help="Where you worked, your title, and when. Month and year is enough."
     >
-      <TextField label="Company or organization" value={role.company} onChange={(v) => set({ company: v })} placeholder="Acme Corp" />
-      <TextField label="Your job title" value={role.title} onChange={(v) => set({ title: v })} placeholder="Customer Support Lead" />
+      <SpeakToFill
+        title="Say it instead"
+        prompt="Say it all in one go: where you worked, your title, when you started and finished (or that you still work there), where it was, and whether it was remote."
+        placeholder={'For example: "I worked at Acme Corp as a customer support lead from March 2021 until June 2024, in Boston, but it was mostly remote."'}
+        value={said}
+        onChange={(v) => update(setNote(role.id, "basics", v))}
+        onFill={onFill}
+      />
+      <TextField label="Company or organization" value={role.company} flag={flags.company} onChange={(v) => set({ company: v }, "company")} placeholder="Acme Corp" />
+      <TextField label="Your job title" value={role.title} flag={flags.title} onChange={(v) => set({ title: v }, "title")} placeholder="Customer Support Lead" />
       <div className="grid gap-4 sm:grid-cols-2">
         <TextField
           label="Started"
           type="month"
           value={role.start_month ?? ""}
-          onChange={(v) => set({ start_month: v || null })}
+          flag={flags.start_month}
+          onChange={(v) => set({ start_month: v || null }, "start_month")}
           placeholder="2021-03"
         />
         {!role.is_current && (
@@ -201,7 +304,8 @@ function JobBasicsStep({ role }: { role: Role }) {
             label="Ended"
             type="month"
             value={role.end_month ?? ""}
-            onChange={(v) => set({ end_month: v || null })}
+            flag={flags.end_month}
+            onChange={(v) => set({ end_month: v || null }, "end_month")}
             placeholder="2024-06"
           />
         )}
@@ -211,11 +315,11 @@ function JobBasicsStep({ role }: { role: Role }) {
           type="checkbox"
           className="h-5 w-5"
           checked={role.is_current}
-          onChange={(e) => set({ is_current: e.target.checked, end_month: e.target.checked ? null : role.end_month })}
+          onChange={(e) => set({ is_current: e.target.checked, end_month: e.target.checked ? null : role.end_month }, "end_month")}
         />
         <span>I still work here</span>
       </label>
-      <TextField label="Location (optional)" value={role.location} onChange={(v) => set({ location: v })} placeholder="Boston, MA" />
+      <TextField label="Location (optional)" value={role.location} flag={flags.location} onChange={(v) => set({ location: v }, "location")} placeholder="Boston, MA" />
       <fieldset>
         <legend className="label">Where did you work?</legend>
         <div className="flex flex-wrap gap-2">
@@ -224,13 +328,14 @@ function JobBasicsStep({ role }: { role: Role }) {
               key={m.label}
               type="button"
               aria-pressed={role.work_mode === m.value}
-              onClick={() => set({ work_mode: m.value })}
+              onClick={() => set({ work_mode: m.value }, "work_mode")}
               className={role.work_mode === m.value ? "btn-primary px-3 py-2 text-sm" : "btn-secondary px-3 py-2 text-sm"}
             >
               {m.label}
             </button>
           ))}
         </div>
+        {flags.work_mode && <p className="mt-1 text-sm text-amber-700 dark:text-amber-300">⚠ {flags.work_mode}</p>}
       </fieldset>
     </StepShell>
   );
@@ -241,7 +346,7 @@ function roleName(role: Role): string {
   return role.company || role.title || "this job";
 }
 
-function JobQuestionStep({ role, prompt }: { role: Role; prompt: RolePrompt }) {
+function JobQuestionStep({ role, prompt }: { role: Role; prompt: QuestionPrompt }) {
   const { memory, update } = useMemoryFile();
   const q = ROLE_QUESTIONS[prompt];
   return (
@@ -272,9 +377,65 @@ function ListStep({ section }: { section: ListSection }) {
   const { memory, update } = useMemoryFile();
   const cfg = SECTIONS[section];
   const entries = memory.sections[section];
+  const [said, setSaid] = useState("");
+  const { flags, setFlags, clear } = useFlags();
+  const canSpeak = section === "education" || section === "certifications";
+  const edit = (id: string, patch: Partial<Entry>, field: keyof Entry) => {
+    clear(`${id}.${field}`);
+    update(updateEntry(section, id, patch));
+  };
+
+  async function onFill(transcript: string, creds: { apiKey: string; model: string }) {
+    const results = await fillEntries(transcript, creds, section as "education" | "certifications");
+    const nextFlags: Record<string, string | null> = { ...flags };
+    let flagged = 0;
+    const fresh: Entry[] = results.map((r) => {
+      const e = emptyEntry();
+      for (const k of ["title", "org", "dates", "details"] as const) {
+        const f = r[k];
+        if (f) {
+          e[k] = f.value;
+          nextFlags[`${e.id}.${k}`] = f.flag;
+          if (f.flag) flagged++;
+        }
+      }
+      return e;
+    });
+    // Replace blank entries the user hadn't started, then add the new ones.
+    const blanks = entries.filter((e) => !e.title && !e.org && !e.dates && !e.details);
+    update((m) => {
+      let next = m;
+      for (const b of blanks) next = removeEntry(section, b.id)(next);
+      return addEntries(section, fresh)(next);
+    });
+    setFlags(nextFlags);
+    setSaid("");
+    if (!fresh.length) return fillSummary(0, 0);
+    return `Added ${fresh.length} ${cfg.itemName}${fresh.length === 1 ? "" : "s"}.${flagged ? ` Check the ${flagged} field${flagged === 1 ? "" : "s"} marked with ⚠ below.` : " Give them a quick check below."}`;
+  }
 
   return (
     <StepShell step={section} question={cfg.question} help={cfg.help} nextLabel={entries.length ? "Next" : "Skip"}>
+      {canSpeak && (
+        <SpeakToFill
+          title="Say it instead"
+          prompt={
+            section === "education"
+              ? "Say each school: the degree or program, the school, the years, and anything like honors or a minor."
+              : "Say each certification or license, who issued it, and when you got it."
+          }
+          placeholder={
+            section === "education"
+              ? 'For example: "I got a bachelor\'s in biology from State University, 2016 to 2020, minor in chemistry."'
+              : 'For example: "I have my Google Analytics certification from 2023, and a forklift license from 2019."'
+          }
+          value={said}
+          onChange={setSaid}
+          onFill={onFill}
+          buttonLabel={`Add ${section === "education" ? "schools" : "certifications"} from what I said`}
+          defaultOpen={entries.length === 0}
+        />
+      )}
       {entries.length === 0 && <p className="muted">Nothing added yet.</p>}
       {entries.map((e, i) => (
         <div key={e.id} className="card space-y-4">
@@ -290,20 +451,23 @@ function ListStep({ section }: { section: ListSection }) {
             label={cfg.title.label}
             value={e.title}
             placeholder={cfg.title.placeholder}
-            onChange={(v) => update(updateEntry(section, e.id, { title: v }))}
+            flag={flags[`${e.id}.title`]}
+            onChange={(v) => edit(e.id, { title: v }, "title")}
           />
           <TextField
             label={cfg.org.label}
             value={e.org}
             placeholder={cfg.org.placeholder}
-            onChange={(v) => update(updateEntry(section, e.id, { org: v }))}
+            flag={flags[`${e.id}.org`]}
+            onChange={(v) => edit(e.id, { org: v }, "org")}
           />
           {cfg.dates && (
             <TextField
               label={cfg.dates.label}
               value={e.dates}
               placeholder={cfg.dates.placeholder}
-              onChange={(v) => update(updateEntry(section, e.id, { dates: v }))}
+              flag={flags[`${e.id}.dates`]}
+              onChange={(v) => edit(e.id, { dates: v }, "dates")}
             />
           )}
           {cfg.details &&
@@ -320,7 +484,8 @@ function ListStep({ section }: { section: ListSection }) {
                 label={cfg.details.label}
                 value={e.details}
                 placeholder={cfg.details.placeholder}
-                onChange={(v) => update(updateEntry(section, e.id, { details: v }))}
+                flag={flags[`${e.id}.details`]}
+                onChange={(v) => edit(e.id, { details: v }, "details")}
               />
             ))}
         </div>

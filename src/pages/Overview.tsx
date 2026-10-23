@@ -8,9 +8,9 @@ import { addRole, getNote, manualSkills, removeRole } from "@/lib/memory/edit";
 import { formatRange } from "@/lib/months";
 import { SECTIONS } from "@/lib/sections";
 import { stepHref } from "@/lib/steps";
-import type { ListSection, Role, RolePrompt } from "@/lib/types";
+import type { ListSection, QuestionPrompt, Role } from "@/lib/types";
 
-const PROMPTS: RolePrompt[] = ["did", "wins", "tools"];
+const PROMPTS: QuestionPrompt[] = ["did", "wins", "tools"];
 const MODE_LABEL = { onsite: "On-site", hybrid: "Hybrid", remote: "Remote" } as const;
 
 export function Overview() {

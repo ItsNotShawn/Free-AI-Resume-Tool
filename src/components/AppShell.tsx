@@ -14,16 +14,21 @@ export function AppShell({ children, wide = false }: { children: ReactNode; wide
           <Link to={memory ? "/memory" : "/"} className="font-semibold">
             Resume Memory
           </Link>
-          {memory && (
-            <nav className="flex items-center gap-4 text-sm">
-              <Link to="/memory" className="hover:underline">
-                Overview
-              </Link>
-              <Link to="/setup" className="hover:underline">
-                Guided setup
-              </Link>
-            </nav>
-          )}
+          <nav className="flex items-center gap-4 text-sm">
+            {memory && (
+              <>
+                <Link to="/memory" className="hover:underline">
+                  Overview
+                </Link>
+                <Link to="/setup" className="hover:underline">
+                  Guided setup
+                </Link>
+              </>
+            )}
+            <Link to="/settings" className="hover:underline">
+              AI key
+            </Link>
+          </nav>
         </div>
       </header>
 

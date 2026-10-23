@@ -8,6 +8,7 @@ export function TextField({
   type = "text",
   autoComplete,
   hint,
+  flag,
 }: {
   label: string;
   value: string;
@@ -16,6 +17,8 @@ export function TextField({
   type?: "text" | "email" | "tel" | "url" | "month";
   autoComplete?: string;
   hint?: string;
+  /** Shown when the AI filled this in and the user should double-check it. */
+  flag?: string | null;
 }) {
   const id = useId();
   return (
@@ -25,13 +28,14 @@ export function TextField({
       </label>
       <input
         id={id}
-        className="input"
+        className={flag ? "input border-amber-500 dark:border-amber-500" : "input"}
         type={type}
         value={value}
         placeholder={placeholder}
         autoComplete={autoComplete ?? "off"}
         onChange={(e) => onChange(e.target.value)}
       />
+      {flag && <p className="mt-1 text-sm text-amber-700 dark:text-amber-300">⚠ {flag}</p>}
       {hint && <p className="mt-1 text-sm text-stone-500">{hint}</p>}
     </div>
   );
