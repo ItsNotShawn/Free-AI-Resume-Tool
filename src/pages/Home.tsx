@@ -1,4 +1,4 @@
-const REPO_URL = "https://github.com/ItsNotShawn/MasterResumeSite";
+const REPO_URL = "https://github.com/ItsNotShawn/Free-AI-Resume-Tool";
 
 const STEPS = [
   {

@@ -1,4 +1,4 @@
-# MasterResumeSite (Resume Memory)
+# Free AI Resume Tool (Resume Memory)
 
 Free career memory that builds targeted resumes from experience you've confirmed.
 
@@ -6,7 +6,7 @@ Free career memory that builds targeted resumes from experience you've confirmed
 - **Your data stays on your device.** Your career memory is one JSON file you download and keep. The site has no server.
 - **Bring your own AI key.** The browser calls Anthropic directly with your key. Nothing is sent anywhere else, and the site's Content-Security-Policy blocks every other host.
 
-Live site: https://itsnotshawn.github.io/MasterResumeSite/
+Live site: https://itsnotshawn.github.io/Free-AI-Resume-Tool/
 
 Stack: Vite · React · TypeScript · Tailwind · GitHub Pages (deployed by GitHub Actions).
 

@@ -2,7 +2,7 @@ import { useEffect, useState, type AnchorHTMLAttributes } from "react";
 
 /**
  * Tiny hash router. GitHub Pages only serves static files, so routes live
- * after the "#" (e.g. .../MasterResumeSite/#/library) and a refresh never 404s.
+ * after the "#" (e.g. .../Free-AI-Resume-Tool/#/library) and a refresh never 404s.
  */
 function current(): string {
   const h = window.location.hash.replace(/^#/, "");

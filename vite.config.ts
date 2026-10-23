@@ -36,7 +36,7 @@ function cspPlugin(): Plugin {
 }
 
 export default defineConfig({
-  // Relative paths so the site works at /MasterResumeSite/ on GitHub Pages
+  // Relative paths so the site works at /Free-AI-Resume-Tool/ on GitHub Pages
   // (or any other folder) without hard-coding the repo name.
   base: "./",
   plugins: [react(), tailwindcss(), cspPlugin()],
