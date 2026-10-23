@@ -13,11 +13,15 @@ Stack: Vite · React · TypeScript · Tailwind · GitHub Pages (deployed by GitH
 ## Status (branch `static-byok`)
 
 - [x] **1. Scaffold and deploy**: static Vite app, Pages workflow, home page
-- [ ] 2. Memory file: new / upload / download, autosave, versioned format
-- [ ] 3. Your key + AI structuring (ramble → proposed atoms → confirm)
+- [x] **2. Memory file + guided intake**: new / open / download, autosaved working copy, versioned format; one-question-per-screen setup for contact, jobs (basics, day to day, wins, tools), education, certifications, skills, hobbies, optional sections, and how you work / what excites you
+- [ ] 3. Your key + AI structuring (answers → proposed facts → confirm)
 - [ ] 4. Target: job posting → cited draft + never-invent flags
 - [ ] 5. Light editing + PDF download
 - [ ] 6. Cleanup and docs
+
+## Memory file format
+
+One JSON file (`my-career-memory.json` by default) with `"format": "resume-memory"` and `"version": 1`. When the shape changes, bump `CURRENT_VERSION` in `src/lib/memory/schema.ts` and add a migration step there, so older files still open.
 
 ## Run locally
 

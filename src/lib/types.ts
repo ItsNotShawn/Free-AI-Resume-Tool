@@ -1,24 +1,54 @@
+/**
+ * Everything in a memory file. All of it lives on the user's device;
+ * nothing here is ever sent to a server we run (there isn't one).
+ */
+
 export type AtomKind = "bullet" | "outcome" | "skill" | "tool";
 export type AtomStatus = "proposed" | "confirmed";
 export type AtomOrigin = "manual" | "ai";
+export type WorkMode = "onsite" | "hybrid" | "remote";
+
+export type Profile = {
+  name: string;
+  email: string;
+  phone: string;
+  location: string;
+  links: string[];
+};
 
 export type Role = {
   id: string;
-  user_id: string;
   company: string;
   title: string;
-  location: string | null;
-  start_month: string | null; // "YYYY-MM-01"
-  end_month: string | null;
+  location: string;
+  work_mode: WorkMode | null;
+  start_month: string | null; // "YYYY-MM"
+  end_month: string | null; // "YYYY-MM"
   is_current: boolean;
   created_at: string;
   updated_at: string;
 };
 
+/** The questions asked about each job, one chunk at a time. */
+export type RolePrompt = "did" | "wins" | "tools";
+
+/**
+ * A raw answer, kept word for word. AI-proposed atoms must quote one of these,
+ * which is how the never-invent check knows where a fact came from.
+ */
+export type Note = {
+  id: string;
+  role_id: string;
+  prompt: RolePrompt;
+  body: string;
+  created_at: string;
+  updated_at: string;
+};
+
+/** One small confirmed fact. role_id is null for skills not tied to a job. */
 export type Atom = {
   id: string;
-  user_id: string;
-  role_id: string;
+  role_id: string | null;
   kind: AtomKind;
   text: string;
   status: AtomStatus;
@@ -31,41 +61,31 @@ export type Atom = {
   updated_at: string;
 };
 
-export const ATOM_KINDS: { kind: AtomKind; label: string; hint: string; placeholder: string }[] = [
-  {
-    kind: "bullet",
-    label: "What you did",
-    hint: "Responsibilities and work, in your own words.",
-    placeholder: "Led migration of billing service from monolith to separate service\nOnboarded and mentored 3 new engineers",
-  },
-  {
-    kind: "outcome",
-    label: "Results",
-    hint: "Outcomes and numbers you can stand behind.",
-    placeholder: "Cut monthly infra cost by about 20%\nReduced support tickets for invoicing by half",
-  },
-  {
-    kind: "skill",
-    label: "Skills",
-    hint: "One per line.",
-    placeholder: "Project management\nStakeholder communication",
-  },
-  {
-    kind: "tool",
-    label: "Tools & tech",
-    hint: "One per line.",
-    placeholder: "PostgreSQL\nFigma",
-  },
+/** Education, certifications and the optional sections share one shape. */
+export type Entry = {
+  id: string;
+  title: string;
+  org: string;
+  dates: string;
+  details: string;
+};
+
+export type ListSection = "education" | "certifications" | "projects" | "volunteer" | "awards" | "languages";
+export type ExtraSection = "projects" | "volunteer" | "awards" | "languages";
+
+export type About = {
+  work_process: string;
+  motivation: string;
+  hobbies: string;
+};
+
+export const ATOM_KINDS: { kind: AtomKind; label: string }[] = [
+  { kind: "bullet", label: "What you did" },
+  { kind: "outcome", label: "Results" },
+  { kind: "skill", label: "Skills" },
+  { kind: "tool", label: "Tools & tech" },
 ];
 
 export const KIND_LABEL: Record<AtomKind, string> = Object.fromEntries(
   ATOM_KINDS.map((k) => [k.kind, k.label]),
 ) as Record<AtomKind, string>;
-
-export type SourceNote = {
-  id: string;
-  user_id: string;
-  role_id: string | null;
-  body: string;
-  created_at: string;
-};
